@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Document Summarizer — Transform long texts & PDFs instantly</title>
+  <title>AI Document & YouTube Summarizer — Transform content instantly</title>
   <!-- Plus Jakarta Sans Font for premium look -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -117,6 +117,46 @@
       box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5), 0 0 20px 2px rgba(99, 102, 241, 0.05);
     }
 
+    /* Tabs Switicher */
+    .tabs-container {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 12px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .tab-pane {
+      animation: fadeIn 0.3s ease forwards;
+    }
+
     /* Drag and Drop Zone */
     .drop-zone {
       border: 2px dashed rgba(99, 102, 241, 0.3);
@@ -166,6 +206,61 @@
 
     #fileInput {
       display: none;
+    }
+
+    /* YouTube Input Pane */
+    .youtube-input-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .input-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+      transition: all 0.3s ease;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+    }
+
+    .input-icon {
+      font-size: 1.2rem;
+      margin-right: 12px;
+      color: var(--text-muted);
+    }
+
+    .input-wrapper input {
+      background: none;
+      border: none;
+      color: var(--text-main);
+      font-size: 1rem;
+      width: 100%;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .input-wrapper input::placeholder {
+      color: #475569;
+    }
+
+    .input-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
     }
 
     /* Selected File Display */
@@ -413,34 +508,57 @@
 
 <div class="container">
   <header>
-    <h1><span>📝</span> AI Document Summarizer</h1>
-    <p>Upload a PDF or TXT file and let LLMs distill long reports, articles, or essays into concise takeaways instantly.</p>
+    <h1><span>📝</span> AI Content Summarizer</h1>
+    <p>Distill long PDFs, TXT documents, or YouTube video transcripts into clear, structured bulleted summaries instantly.</p>
   </header>
 
   <main class="main-card">
-    <!-- Drag and Drop Zone -->
-    <div class="drop-zone" id="dropZone" onclick="triggerFileInput()">
-      <span class="drop-zone-icon" id="dropIcon">📥</span>
-      <div class="drop-zone-text" id="dropText">Drag and drop file here</div>
-      <div class="drop-zone-subtext" id="dropSubtext">Supports PDF or TXT files up to 15,000 characters</div>
-      <input type="file" id="fileInput" accept=".pdf,.txt" onchange="handleFileSelect(event)">
+    <!-- Tabs Switcher -->
+    <div class="tabs-container">
+      <button class="tab-btn active" id="file-tab-btn" onclick="switchTab('file-tab')">📁 Document File</button>
+      <button class="tab-btn" id="youtube-tab-btn" onclick="switchTab('youtube-tab')">🎥 YouTube Video</button>
     </div>
 
-    <!-- Selected File Indicator -->
-    <div class="selected-file-container" id="selectedFileContainer">
-      <div class="file-info">
-        <span class="file-icon" id="fileIcon">📄</span>
-        <div class="file-details">
-          <span class="file-name" id="fileName">document.pdf</span>
-          <span class="file-size" id="fileSize">1.2 MB</span>
+    <!-- Tab 1: File Upload Pane -->
+    <div class="tab-pane" id="file-tab">
+      <div class="drop-zone" id="dropZone" onclick="triggerFileInput()">
+        <span class="drop-zone-icon" id="dropIcon">📥</span>
+        <div class="drop-zone-text" id="dropText">Drag and drop file here</div>
+        <div class="drop-zone-subtext" id="dropSubtext">Supports PDF or TXT files up to 15,000 characters</div>
+        <input type="file" id="fileInput" accept=".pdf,.txt" onchange="handleFileSelect(event)">
+      </div>
+
+      <!-- Selected File Indicator -->
+      <div class="selected-file-container" id="selectedFileContainer">
+        <div class="file-info">
+          <span class="file-icon" id="fileIcon">📄</span>
+          <div class="file-details">
+            <span class="file-name" id="fileName">document.pdf</span>
+            <span class="file-size" id="fileSize">1.2 MB</span>
+          </div>
+        </div>
+        <button class="remove-file-btn" onclick="clearSelectedFile(event)" title="Remove file">&times;</button>
+      </div>
+    </div>
+
+    <!-- Tab 2: YouTube Link Pane -->
+    <div class="tab-pane" id="youtube-tab" style="display: none;">
+      <div class="youtube-input-container">
+        <label for="youtubeUrl" class="input-label">Paste YouTube Video URL</label>
+        <div class="input-wrapper">
+          <span class="input-icon">🔗</span>
+          <input type="text" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." oninput="handleYoutubeInput()">
+        </div>
+        <div class="input-hint">
+          Supports standard watch links, shortened `youtu.be` links, embeds, and YouTube Shorts. 
+          <strong>Important:</strong> The video must have subtitles or transcript captions enabled for this tool to fetch transcripts.
         </div>
       </div>
-      <button class="remove-file-btn" onclick="clearSelectedFile(event)" title="Remove file">&times;</button>
     </div>
 
     <!-- Summarize Action Button -->
     <div class="btn-container">
-      <button class="action-btn" id="submitBtn" onclick="summarizeDocument()" disabled>
+      <button class="action-btn" id="submitBtn" onclick="onGenerateSummary()" disabled>
         <span class="btn-text">Generate Summary</span>
         <div class="spinner"></div>
       </button>
@@ -472,6 +590,35 @@
     : window.location.origin;
 
   let selectedFile = null;
+  let activeTab = 'file-tab';
+
+  // Tab Switcher Logic
+  function switchTab(tabId) {
+    activeTab = tabId;
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.style.display = 'none');
+    
+    if (tabId === 'file-tab') {
+      document.getElementById('file-tab-btn').classList.add('active');
+      document.getElementById('file-tab').style.display = 'block';
+      document.getElementById("submitBtn").disabled = !selectedFile;
+      document.getElementById("submitBtn").querySelector(".btn-text").innerText = "Generate Summary";
+    } else {
+      document.getElementById('youtube-tab-btn').classList.add('active');
+      document.getElementById('youtube-tab').style.display = 'block';
+      const url = document.getElementById("youtubeUrl").value.trim();
+      document.getElementById("submitBtn").disabled = !url;
+      document.getElementById("submitBtn").querySelector(".btn-text").innerText = "Summarize YouTube Video";
+    }
+    // Hide result section when switching tabs to avoid confusion
+    document.getElementById("resultSection").style.display = "none";
+  }
+
+  // YouTube Input Handler
+  function handleYoutubeInput() {
+    const url = document.getElementById("youtubeUrl").value.trim();
+    document.getElementById("submitBtn").disabled = !url;
+  }
 
   // Setup Drag & Drop Event Listeners
   const dropZone = document.getElementById("dropZone");
@@ -538,6 +685,16 @@
     document.getElementById("resultSection").style.display = "none";
   }
 
+  // Routing Generate Summary call based on active tab
+  async function onGenerateSummary() {
+    if (activeTab === 'file-tab') {
+      await summarizeDocument();
+    } else {
+      await summarizeYoutube();
+    }
+  }
+
+  // Summarize Document File (PDF/TXT)
   async function summarizeDocument() {
     if (!selectedFile) return;
 
@@ -545,7 +702,6 @@
     const resultSection = document.getElementById("resultSection");
     const resultContent = document.getElementById("resultContent");
 
-    // Show loading state
     submitBtn.disabled = true;
     submitBtn.classList.add("loading-state");
     resultSection.style.display = "block";
@@ -571,7 +727,6 @@
       const data = await response.json();
       
       if (data.summary) {
-        // Parse markdown text using marked library safely
         resultContent.innerHTML = marked.parse(data.summary);
       } else {
         resultContent.innerText = data.error || "Could not generate summary.";
@@ -579,7 +734,49 @@
     } catch (err) {
       resultContent.innerHTML = `<p style="color: #f87171; font-weight: 500;">⚠️ Error generating summary: ${err.message}</p>`;
     } finally {
-      // Re-enable button and clear loading state
+      submitBtn.classList.remove("loading-state");
+      submitBtn.disabled = false;
+    }
+  }
+
+  // Summarize YouTube Transcript
+  async function summarizeYoutube() {
+    const url = document.getElementById("youtubeUrl").value.trim();
+    if (!url) return;
+
+    const submitBtn = document.getElementById("submitBtn");
+    const resultSection = document.getElementById("resultSection");
+    const resultContent = document.getElementById("resultContent");
+
+    submitBtn.disabled = true;
+    submitBtn.classList.add("loading-state");
+    resultSection.style.display = "block";
+    resultContent.innerHTML = "<p style='color: var(--text-muted); text-align: center; font-style: italic;'>Extracting YouTube transcript and generating summary. This may take a moment...</p>";
+
+    try {
+      const response = await fetch(`${BASE_URL}/summarize/youtube`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ url: url })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Server returned an error");
+      }
+
+      const data = await response.json();
+      
+      if (data.summary) {
+        resultContent.innerHTML = marked.parse(data.summary);
+      } else {
+        resultContent.innerText = data.error || "Could not generate summary.";
+      }
+    } catch (err) {
+      resultContent.innerHTML = `<p style="color: #f87171; font-weight: 500;">⚠️ Error: ${err.message}</p>`;
+    } finally {
       submitBtn.classList.remove("loading-state");
       submitBtn.disabled = false;
     }
@@ -588,8 +785,6 @@
   function copySummaryToClipboard() {
     const resultContent = document.getElementById("resultContent");
     const copyBtnText = document.getElementById("copyBtnText");
-
-    // Retrieve plain text of the summary
     const textToCopy = resultContent.innerText;
 
     navigator.clipboard.writeText(textToCopy).then(() => {

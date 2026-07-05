@@ -3,8 +3,10 @@ from flask_cors import CORS
 from groq import Groq
 from pypdf import PdfReader
 import os
+import re
 import logging
 from dotenv import load_dotenv
+from youtube_transcript_api import YouTubeTranscriptApi
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -25,10 +27,24 @@ client = None
 if api_key:
     client = Groq(api_key=api_key)
 
+def extract_video_id(url):
+    # Regex to handle various YouTube link forms:
+    # - https://www.youtube.com/watch?v=dQw4w9WgXcQ
+    # - https://youtu.be/dQw4w9WgXcQ
+    # - https://www.youtube.com/embed/dQw4w9WgXcQ
+    # - https://www.youtube.com/shorts/dQw4w9WgXcQ
+    pattern = r"(?:v=|\/shorts\/|\/embed\/|\/v\/|youtu\.be\/|\/watch\?v=|\&v=)([^#\&\?]*)"
+    match = re.search(pattern, url)
+    if match:
+        video_id = match.group(1)
+        if len(video_id) == 11:
+            return video_id
+    return None
+
 def summarize_text(text):
     text = text.strip()
     if not text:
-        return "No readable text found in the file."
+        return "No readable text found in the file or transcript."
     
     if len(text) > 15000:
         text = text[:15000]  # Stay within free model limits
@@ -91,6 +107,39 @@ def summarize_pdf():
     except Exception as e:
         logger.error(f"Error processing PDF file: {e}")
         return jsonify({"error": f"Failed to process PDF file: {str(e)}"}), 500
+
+@app.route("/summarize/youtube", methods=["POST"])
+def summarize_youtube():
+    data = request.get_json()
+    if not data or "url" not in data:
+        return jsonify({"error": "No URL provided"}), 400
+
+    url = data["url"].strip()
+    video_id = extract_video_id(url)
+    if not video_id:
+        return jsonify({"error": "Invalid YouTube URL format. Could not extract video ID."}), 400
+
+    try:
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+        transcript_text = " ".join([entry['text'] for entry in transcript_list])
+        
+        if not transcript_text.strip():
+            return jsonify({"error": "No transcript text found in this video."}), 400
+            
+        summary = summarize_text(transcript_text)
+        return jsonify({"summary": summary})
+    except Exception as e:
+        logger.error(f"Error fetching YouTube transcript for {video_id}: {e}")
+        # Clean up common exception strings to make them user friendly
+        err_msg = str(e)
+        if "TranscriptsDisabled" in err_msg or "NoTranscriptFound" in err_msg:
+            friendly_err = "Captions are disabled or unavailable for this video. Please try a video that has subtitles/captions enabled."
+        elif "VideoUnavailable" in err_msg:
+            friendly_err = "This YouTube video is unavailable or private."
+        else:
+            friendly_err = f"Failed to retrieve YouTube transcript: {err_msg.split('Details:')[0].strip()}"
+            
+        return jsonify({"error": friendly_err}), 400
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
