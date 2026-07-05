@@ -124,8 +124,8 @@ def summarize_youtube():
         return jsonify({"error": "Invalid YouTube URL format. Could not extract video ID."}), 400
 
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-        transcript_text = " ".join([entry['text'] for entry in transcript_list])
+        transcript_list = YouTubeTranscriptApi().fetch(video_id)
+        transcript_text = " ".join([entry.text for entry in transcript_list])
         
         if not transcript_text.strip():
             return jsonify({"error": "No transcript text found in this video."}), 400
