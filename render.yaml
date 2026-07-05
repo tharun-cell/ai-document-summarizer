@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ai-document-summarizer
+    env: python
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "gunicorn --chdir backend app:app"
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false # User will fill this in the Render UI
+      - key: PORT
+        value: 10000

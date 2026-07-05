@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Document Summarizer — Transform long texts & PDFs instantly</title>
+  <!-- Plus Jakarta Sans Font for premium look -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Markdown parser library -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #020617 100%);
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99, 102, 241, 0.4);
+      --accent: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.3);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    /* Ambient light effects in background */
+    body::before {
+      content: '';
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0) 70%);
+      top: 10%;
+      left: 10%;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    body::after {
+      content: '';
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0) 70%);
+      bottom: 10%;
+      right: 5%;
+      z-index: -1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      z-index: 10;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #ffffff 40%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    header p {
+      font-size: 1rem;
+      color: var(--text-muted);
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .main-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: var(--glass-shadow);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .main-card:hover {
+      box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5), 0 0 20px 2px rgba(99, 102, 241, 0.05);
+    }
+
+    /* Drag and Drop Zone */
+    .drop-zone {
+      border: 2px dashed rgba(99, 102, 241, 0.3);
+      border-radius: 16px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(15, 23, 42, 0.4);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.05);
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.1) inset;
+    }
+
+    .drop-zone.drag-over {
+      transform: scale(0.99);
+    }
+
+    .drop-zone-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+      display: inline-block;
+      transition: transform 0.3s ease;
+    }
+
+    .drop-zone:hover .drop-zone-icon {
+      transform: translateY(-4px);
+    }
+
+    .drop-zone-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone-subtext {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* Selected File Display */
+    .selected-file-container {
+      display: none;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 16px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      animation: slideIn 0.3s ease forwards;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .file-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .file-icon {
+      font-size: 1.8rem;
+    }
+
+    .file-details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .file-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #f1f5f9;
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-size {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .remove-file-btn {
+      background: rgba(239, 68, 68, 0.1);
+      color: #f87171;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+
+    .remove-file-btn:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      transform: rotate(90deg);
+    }
+
+    /* Action Buttons */
+    .btn-container {
+      display: flex;
+      gap: 16px;
+    }
+
+    .action-btn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--primary) 0%, #4338ca 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 16px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 14px var(--primary-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .action-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--primary-glow);
+      background: linear-gradient(135deg, var(--primary-hover) 0%, #3730a3 100%);
+    }
+
+    .action-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .action-btn:disabled {
+      background: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Result Section */
+    .result-section {
+      display: none;
+      margin-top: 32px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 24px;
+      animation: fadeIn 0.5s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .result-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .copy-btn {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .result-box {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 16px;
+      padding: 24px;
+      min-height: 100px;
+      line-height: 1.6;
+      font-size: 1rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+    }
+
+    /* Markdown styling inside result box */
+    .result-box h1, .result-box h2, .result-box h3 {
+      color: #f1f5f9;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .result-box h3 { font-size: 1.15rem; }
+    .result-box p { margin-bottom: 12px; }
+    .result-box ul, .result-box ol {
+      margin-left: 20px;
+      margin-bottom: 16px;
+    }
+    .result-box li {
+      margin-bottom: 6px;
+    }
+    .result-box strong {
+      color: #6366f1;
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border-left-color: #ffffff;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-state .spinner {
+      display: inline-block;
+    }
+    .loading-state .btn-text {
+      display: none;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      body { padding: 16px; }
+      header h1 { font-size: 2rem; }
+      .main-card { padding: 20px; }
+      .drop-zone { padding: 30px 15px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1><span>📝</span> AI Document Summarizer</h1>
+    <p>Upload a PDF or TXT file and let LLMs distill long reports, articles, or essays into concise takeaways instantly.</p>
+  </header>
+
+  <main class="main-card">
+    <!-- Drag and Drop Zone -->
+    <div class="drop-zone" id="dropZone" onclick="triggerFileInput()">
+      <span class="drop-zone-icon" id="dropIcon">📥</span>
+      <div class="drop-zone-text" id="dropText">Drag and drop file here</div>
+      <div class="drop-zone-subtext" id="dropSubtext">Supports PDF or TXT files up to 15,000 characters</div>
+      <input type="file" id="fileInput" accept=".pdf,.txt" onchange="handleFileSelect(event)">
+    </div>
+
+    <!-- Selected File Indicator -->
+    <div class="selected-file-container" id="selectedFileContainer">
+      <div class="file-info">
+        <span class="file-icon" id="fileIcon">📄</span>
+        <div class="file-details">
+          <span class="file-name" id="fileName">document.pdf</span>
+          <span class="file-size" id="fileSize">1.2 MB</span>
+        </div>
+      </div>
+      <button class="remove-file-btn" onclick="clearSelectedFile(event)" title="Remove file">&times;</button>
+    </div>
+
+    <!-- Summarize Action Button -->
+    <div class="btn-container">
+      <button class="action-btn" id="submitBtn" onclick="summarizeDocument()" disabled>
+        <span class="btn-text">Generate Summary</span>
+        <div class="spinner"></div>
+      </button>
+    </div>
+
+    <!-- Result Area -->
+    <section class="result-section" id="resultSection">
+      <div class="result-header">
+        <div class="result-title">
+          <span>✨</span> AI Summary Report
+        </div>
+        <button class="copy-btn" id="copyBtn" onclick="copySummaryToClipboard()">
+          <span id="copyBtnText">Copy Report</span>
+        </button>
+      </div>
+      <div class="result-box" id="resultContent"></div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <p>Powered by Llama 3.3 & Groq API. Designed for high performance.</p>
+</footer>
+
+<script>
+  // Detect server endpoint dynamically based on where the frontend is run
+  const BASE_URL = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1") || window.location.protocol === "file:"
+    ? "http://127.0.0.1:5000"
+    : window.location.origin;
+
+  let selectedFile = null;
+
+  // Setup Drag & Drop Event Listeners
+  const dropZone = document.getElementById("dropZone");
+  
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+    }, false);
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files.length) {
+      validateAndSetFile(files[0]);
+    }
+  });
+
+  function triggerFileInput() {
+    document.getElementById("fileInput").click();
+  }
+
+  function handleFileSelect(e) {
+    const files = e.target.files;
+    if (files.length) {
+      validateAndSetFile(files[0]);
+    }
+  }
+
+  function validateAndSetFile(file) {
+    const extension = file.name.split('.').pop().toLowerCase();
+    if (extension !== 'pdf' && extension !== 'txt') {
+      alert("Invalid file format. Please upload a PDF or TXT file.");
+      return;
+    }
+
+    selectedFile = file;
+
+    // Display selected file UI
+    document.getElementById("fileName").innerText = file.name;
+    document.getElementById("fileSize").innerText = formatBytes(file.size);
+    document.getElementById("fileIcon").innerText = extension === 'pdf' ? '📕' : '📄';
+    
+    document.getElementById("selectedFileContainer").style.display = "flex";
+    document.getElementById("dropZone").style.display = "none";
+    document.getElementById("submitBtn").disabled = false;
+  }
+
+  function clearSelectedFile(e) {
+    if (e) e.stopPropagation();
+    selectedFile = null;
+    document.getElementById("fileInput").value = "";
+    document.getElementById("selectedFileContainer").style.display = "none";
+    document.getElementById("dropZone").style.display = "block";
+    document.getElementById("submitBtn").disabled = true;
+    document.getElementById("resultSection").style.display = "none";
+  }
+
+  async function summarizeDocument() {
+    if (!selectedFile) return;
+
+    const submitBtn = document.getElementById("submitBtn");
+    const resultSection = document.getElementById("resultSection");
+    const resultContent = document.getElementById("resultContent");
+
+    // Show loading state
+    submitBtn.disabled = true;
+    submitBtn.classList.add("loading-state");
+    resultSection.style.display = "block";
+    resultContent.innerHTML = "<p style='color: var(--text-muted); text-align: center; font-style: italic;'>Analyzing document and generating bulleted summary. This can take a few seconds...</p>";
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    const extension = selectedFile.name.split('.').pop().toLowerCase();
+    const endpoint = extension === 'pdf' ? 'pdf' : 'text';
+
+    try {
+      const response = await fetch(`${BASE_URL}/summarize/${endpoint}`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Server returned an error");
+      }
+
+      const data = await response.json();
+      
+      if (data.summary) {
+        // Parse markdown text using marked library safely
+        resultContent.innerHTML = marked.parse(data.summary);
+      } else {
+        resultContent.innerText = data.error || "Could not generate summary.";
+      }
+    } catch (err) {
+      resultContent.innerHTML = `<p style="color: #f87171; font-weight: 500;">⚠️ Error generating summary: ${err.message}</p>`;
+    } finally {
+      // Re-enable button and clear loading state
+      submitBtn.classList.remove("loading-state");
+      submitBtn.disabled = false;
+    }
+  }
+
+  function copySummaryToClipboard() {
+    const resultContent = document.getElementById("resultContent");
+    const copyBtnText = document.getElementById("copyBtnText");
+
+    // Retrieve plain text of the summary
+    const textToCopy = resultContent.innerText;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      copyBtnText.innerText = "Copied! ✓";
+      setTimeout(() => {
+        copyBtnText.innerText = "Copy Report";
+      }, 2000);
+    }).catch(err => {
+      alert("Failed to copy text: " + err);
+    });
+  }
+
+  function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  }
+</script>
+</body>
+</html>
