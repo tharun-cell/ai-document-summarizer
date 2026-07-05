@@ -68,7 +68,11 @@ def summarize_text(text):
 
 @app.route("/")
 def index():
-    return app.send_static_file("index.html")
+    response = app.send_static_file("index.html")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.route("/summarize/text", methods=["POST"])
 def summarize_txt():
