@@ -43,16 +43,28 @@ def extract_video_id(url):
     return None
 
 def fetch_youtube_transcript(video_id):
-    # Method 1: Try using the third-party proxy API first (bypasses cloud IP ban)
-    alt_url = f"https://youtube-transcript.ai/transcript/{video_id}.txt"
-    try:
-        logger.info(f"Attempting to fetch transcript for {video_id} via youtube-transcript.ai...")
-        response = requests.get(alt_url, timeout=10)
-        if response.status_code == 200 and response.text.strip():
-            logger.info("Successfully fetched transcript via alternative API.")
-            return response.text
-    except Exception as e:
-        logger.warning(f"Alternative API failed: {e}. Trying official library...")
+    # Method 1: Check if Supadata API Key is present in the environment (stable production solution)
+    supadata_key = os.getenv("SUPADATA_API_KEY")
+    if supadata_key:
+        logger.info(f"Attempting to fetch transcript for {video_id} via Supadata API...")
+        url = f"https://api.supadata.ai/v1/youtube/transcript?videoId={video_id}"
+        headers = {"x-api-key": supadata_key}
+        try:
+            response = requests.get(url, headers=headers, timeout=15)
+            if response.status_code == 200:
+                data = response.json()
+                content = data.get("content")
+                if isinstance(content, list):
+                    transcript_text = " ".join([item.get("text", "") for item in content])
+                    logger.info("Successfully fetched transcript via Supadata API.")
+                    return transcript_text
+                elif isinstance(content, str):
+                    logger.info("Successfully fetched plain text transcript via Supadata API.")
+                    return content
+            else:
+                logger.warning(f"Supadata API returned status {response.status_code}: {response.text}")
+        except Exception as e:
+            logger.error(f"Error fetching from Supadata API: {e}")
 
     # Method 2: Fallback to the official youtube-transcript-api (works locally, fails on cloud if IP banned)
     try:
@@ -62,6 +74,14 @@ def fetch_youtube_transcript(video_id):
         return transcript_text
     except Exception as e:
         logger.error(f"YouTubeTranscriptApi failed: {e}")
+        # If running in a cloud environment and missing key, raise a helpful instruction error
+        is_cloud = os.getenv("RENDER") or os.getenv("PORT")
+        if is_cloud and not supadata_key:
+            raise Exception(
+                "YouTube is currently blocking requests from this server's IP address (standard for cloud hosting providers like Render).\n\n"
+                "To resolve this, please sign up for a free developer account at https://supadata.ai, "
+                "obtain your free API key, and add it to your Render Environment Variables as: SUPADATA_API_KEY"
+            )
         raise e
 
 def summarize_text(text):
