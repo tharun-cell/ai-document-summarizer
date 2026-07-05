@@ -5,6 +5,7 @@ from pypdf import PdfReader
 import os
 import re
 import logging
+import requests
 from dotenv import load_dotenv
 from youtube_transcript_api import YouTubeTranscriptApi
 
@@ -40,6 +41,28 @@ def extract_video_id(url):
         if len(video_id) == 11:
             return video_id
     return None
+
+def fetch_youtube_transcript(video_id):
+    # Method 1: Try using the third-party proxy API first (bypasses cloud IP ban)
+    alt_url = f"https://youtube-transcript.ai/transcript/{video_id}.txt"
+    try:
+        logger.info(f"Attempting to fetch transcript for {video_id} via youtube-transcript.ai...")
+        response = requests.get(alt_url, timeout=10)
+        if response.status_code == 200 and response.text.strip():
+            logger.info("Successfully fetched transcript via alternative API.")
+            return response.text
+    except Exception as e:
+        logger.warning(f"Alternative API failed: {e}. Trying official library...")
+
+    # Method 2: Fallback to the official youtube-transcript-api (works locally, fails on cloud if IP banned)
+    try:
+        logger.info(f"Fetching transcript for {video_id} via YouTubeTranscriptApi...")
+        transcript_list = YouTubeTranscriptApi().fetch(video_id)
+        transcript_text = " ".join([entry.text for entry in transcript_list])
+        return transcript_text
+    except Exception as e:
+        logger.error(f"YouTubeTranscriptApi failed: {e}")
+        raise e
 
 def summarize_text(text):
     text = text.strip()
@@ -124,8 +147,7 @@ def summarize_youtube():
         return jsonify({"error": "Invalid YouTube URL format. Could not extract video ID."}), 400
 
     try:
-        transcript_list = YouTubeTranscriptApi().fetch(video_id)
-        transcript_text = " ".join([entry.text for entry in transcript_list])
+        transcript_text = fetch_youtube_transcript(video_id)
         
         if not transcript_text.strip():
             return jsonify({"error": "No transcript text found in this video."}), 400
