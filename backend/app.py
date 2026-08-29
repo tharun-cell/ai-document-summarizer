@@ -119,10 +119,8 @@ def summarize_text(text):
         except Exception as e:
             err_msg = str(e)
             logger.warning(f"Failed with model {model_name}: {err_msg}")
-            # Catch all model unavailability/decommissioned/not found errors and try the next model
-            if any(k in err_msg for k in ["model_not_found", "model_decommissioned", "404", "400", "decommissioned"]):
-                continue
-            return f"Error communicating with AI service: {err_msg}"
+            # Automatically skip any failed or decommissioned model and try the next candidate
+            continue
 
     return "Error communicating with AI service: No active supported Groq model found. Please check your Groq API key permissions."
 
