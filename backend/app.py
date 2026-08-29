@@ -104,6 +104,7 @@ def summarize_text(text):
         "mixtral-8x7b-32768"
     ]
 
+    last_error = ""
     for model_name in models_to_try:
         try:
             logger.info(f"Attempting summarization with model: {model_name}")
@@ -117,12 +118,11 @@ def summarize_text(text):
             )
             return response.choices[0].message.content
         except Exception as e:
-            err_msg = str(e)
-            logger.warning(f"Failed with model {model_name}: {err_msg}")
-            # Automatically skip any failed or decommissioned model and try the next candidate
+            last_error = str(e)
+            logger.warning(f"Failed with model {model_name}: {last_error}")
             continue
 
-    return "Error communicating with AI service: No active supported Groq model found. Please check your Groq API key permissions."
+    return f"Error communicating with AI service: {last_error if last_error else 'No supported model response.'}"
 
 @app.route("/")
 def index():
