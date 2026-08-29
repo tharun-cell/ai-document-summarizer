@@ -104,6 +104,21 @@ def summarize_text(text):
         "llama-3.1-8b-instant"
     ]
 
+    # Attempt to query available models dynamically from Groq API
+    try:
+        models_page = active_client.models.list()
+        available_model_ids = [m.id for m in models_page.data if hasattr(m, 'id')]
+        logger.info(f"Fetched available Groq models dynamically: {available_model_ids}")
+        if available_model_ids:
+            # Prioritize versatile or instant text models, then rest of available models
+            priority_models = [m for m in available_model_ids if "llama" in m or "mixtral" in m or "gemma" in m or "qwen" in m]
+            if priority_models:
+                models_to_try = priority_models + [m for m in available_model_ids if m not in priority_models]
+            else:
+                models_to_try = available_model_ids
+    except Exception as e:
+        logger.warning(f"Could not dynamically list Groq models: {e}")
+
     last_error = ""
     for model_name in models_to_try:
         try:
