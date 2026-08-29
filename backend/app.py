@@ -95,19 +95,33 @@ def summarize_text(text):
     if not client:
         return "Error: GROQ_API_KEY environment variable is missing on the server. Please set it to enable summarization."
 
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": "You summarize content clearly and concisely using bullet points and a short overview. Organize your points logically."},
-                {"role": "user", "content": f"Summarize this:\n\n{text}"}
-            ],
-            temperature=0.3,
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        logger.error(f"Error calling Groq API: {e}")
-        return f"Error communicating with AI service: {str(e)}"
+    models_to_try = [
+        "llama-3.3-70b-versatile",
+        "llama-3.3-70b-specdec",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768"
+    ]
+
+    for model_name in models_to_try:
+        try:
+            logger.info(f"Attempting summarization with model: {model_name}")
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": "You summarize content clearly and concisely using bullet points and a short overview. Organize your points logically."},
+                    {"role": "user", "content": f"Summarize this:\n\n{text}"}
+                ],
+                temperature=0.3,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            err_msg = str(e)
+            logger.warning(f"Failed with model {model_name}: {err_msg}")
+            if "model_not_found" in err_msg or "404" in err_msg:
+                continue
+            return f"Error communicating with AI service: {err_msg}"
+
+    return "Error communicating with AI service: No active supported Groq model found. Please check your Groq API key permissions."
 
 @app.route("/")
 def index():
