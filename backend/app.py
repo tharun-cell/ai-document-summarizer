@@ -92,8 +92,12 @@ def summarize_text(text):
     if len(text) > 15000:
         text = text[:15000]  # Stay within free model limits
 
-    if not client:
-        return "Error: GROQ_API_KEY environment variable is missing on the server. Please set it to enable summarization."
+    # Dynamically fetch API key per call to ensure Render env changes apply immediately
+    current_key = os.getenv("GROQ_API_KEY")
+    if not current_key:
+        return "Error: GROQ_API_KEY environment variable is missing on the server. Please set it in Render Environment Variables."
+
+    active_client = Groq(api_key=current_key)
 
     models_to_try = [
         "llama-3.3-70b-versatile",
@@ -104,7 +108,7 @@ def summarize_text(text):
     for model_name in models_to_try:
         try:
             logger.info(f"Attempting summarization with model: {model_name}")
-            response = client.chat.completions.create(
+            response = active_client.chat.completions.create(
                 model=model_name,
                 messages=[
                     {"role": "system", "content": "You summarize content clearly and concisely using bullet points and a short overview. Organize your points logically."},
