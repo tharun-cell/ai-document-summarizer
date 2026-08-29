@@ -97,8 +97,10 @@ def summarize_text(text):
 
     models_to_try = [
         "llama-3.3-70b-versatile",
-        "llama-3.3-70b-specdec",
         "llama-3.1-8b-instant",
+        "llama3-70b-8192",
+        "llama3-8b-8192",
+        "gemma2-9b-it",
         "mixtral-8x7b-32768"
     ]
 
@@ -117,7 +119,8 @@ def summarize_text(text):
         except Exception as e:
             err_msg = str(e)
             logger.warning(f"Failed with model {model_name}: {err_msg}")
-            if "model_not_found" in err_msg or "404" in err_msg:
+            # Catch all model unavailability/decommissioned/not found errors and try the next model
+            if any(k in err_msg for k in ["model_not_found", "model_decommissioned", "404", "400", "decommissioned"]):
                 continue
             return f"Error communicating with AI service: {err_msg}"
 
